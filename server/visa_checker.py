@@ -1,28 +1,33 @@
 import json
+from openai_service import visa_estimation, country_shortening
 
-# Load data
 with open('./assets/visa_information.json', 'r') as f:
     visa_info = json.load(f)
 
-with open('./assets/country_names.json', 'r') as f:
-    country_names = json.load(f)
-
 def check_visa(passport_code, destination_code):
-    """Generate detailed visa message with country names."""
-    passport = country_names.get(passport_code, "Unknown passport country")
-    destination = country_names.get(destination_code, "Unknown destination")
+    """
+    Check visa requirements based purely on codes.
+    If information is missing, use GPT to estimate.
+    """
+    if len(passport_code) != 3 or len(destination_code) != 3:
+        return country_shortening(passport_code, destination_code)
 
     data = visa_info.get(passport_code, {})
-    
-    # Visa free
+
     if destination_code in data.get('visaFree', {}):
-        days = data['visaFree'][destination_code]['maxStay']
-        return f"{passport} passport holders are exempt from visa for travel to {destination} with a maximum stay of {days} days."
-    
-    # Visa on arrival
+        visa_entry = data['visaFree'][destination_code]
+        max_stay = visa_entry.get('maxStay')
+        if max_stay:
+            return f"Travelers from {passport_code} are exempt from visa for {destination_code} with a maximum stay of {max_stay} days."
+        else:
+            return visa_estimation(passport_code, destination_code, "visaFree")
+
     if destination_code in data.get('visaOnArrival', {}):
-        days = data['visaOnArrival'][destination_code]['maxStay']
-        return f"{passport} passport holders can obtain a visa upon arrival which will give you {days}-day maximum stay."
-    
-    # Visa required
-    return f"{passport} passport holders will need to apply for a visa in advance at a {destination} consulate - there are no visa on arrival or visa exemptions."
+        visa_entry = data['visaOnArrival'][destination_code]
+        max_stay = visa_entry.get('maxStay')
+        if max_stay:
+            return f"Travelers from {passport_code} can obtain a visa on arrival when visiting {destination_code} allowing a maximum stay of {max_stay} days."
+        else:
+            return visa_estimation(passport_code, destination_code, "visaOnArrival")
+
+    return visa_estimation(passport_code, destination_code, "visaRequired")

@@ -1,4 +1,7 @@
+openai==1.12.0
+jiter==0.9.0
+pydantic==2.6.1
+python-dotenv==1.0.0
 flask
 flask-cors
-openai
-python-dotenv
+proxies==0.4.0
